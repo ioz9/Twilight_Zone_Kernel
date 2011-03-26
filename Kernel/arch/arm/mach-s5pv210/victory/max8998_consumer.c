@@ -31,11 +31,10 @@
 #include <linux/platform_device.h>
 #include <linux/regulator/max8998.h>
 #include <linux/regulator/consumer.h>
-#if defined CONFIG_S5PV210_VICTORY
+
 #include <mach/victory/max8998_function.h>
-#elif defined CONFIG_S5PV210_ATLAS
-#include <mach/atlas/max8998_function.h>
-#endif
+
+
 #define DBG(fmt...)
 //#define DBG printk
 
@@ -43,7 +42,7 @@
 #define PMIC_INT		1
 #define PMIC_BOTH		2
 
-#define DECREASE_DVFS_DELAY
+//#define DECREASE_DVFS_DELAY
 
 #ifdef DECREASE_DVFS_DELAY
 #define PMIC_SET_MASK   (0x38) //(0x7 << 3)
@@ -51,9 +50,9 @@
 #define PMIC_SET2_BIT   (0x10) //(0x1 << 4)
 #define PMIC_SET3_BIT   (0x20) //(0x1 << 5)
 #else
-#define PMIC_ARM_MASK		(0x3 << 3)
-#define PMIC_SET1_HIGH		(0x1 << 3)
-#define PMIC_SET2_HIGH		(0x1 << 4)
+#define PMIC_ARM_MASK	(0x18)	//(0x3 << 3)
+#define PMIC_SET1_HIGH	(0x8)	//(0x1 << 3)
+#define PMIC_SET2_HIGH	(0x10)	//(0x1 << 4)
 #endif
 
 #ifndef CONFIG_CPU_FREQ
@@ -64,22 +63,22 @@ unsigned int S5PC11X_FREQ_TAB = 1;
 unsigned int step_curr;
 
 enum PMIC_VOLTAGE {
-	VOUT_0_75,
-	VOUT_0_80,
-	VOUT_0_85,
-	VOUT_0_90,
-	VOUT_0_95,
-	VOUT_1_00,
-	VOUT_1_05,
-	VOUT_1_10,
-	VOUT_1_15,
-	VOUT_1_20,
-	VOUT_1_25,
-	VOUT_1_30,
-	VOUT_1_35,
-	VOUT_1_40,
-	VOUT_1_45,
-	VOUT_1_50
+	VOUT_0_75, 
+	VOUT_0_80, 
+	VOUT_0_85, 
+	VOUT_0_90, 
+	VOUT_0_95, 
+	VOUT_1_00, 
+	VOUT_1_05, 
+	VOUT_1_10, 
+	VOUT_1_15, 
+	VOUT_1_20, 
+	VOUT_1_25, 
+	VOUT_1_30, 
+	VOUT_1_35, 
+	VOUT_1_40, 
+	VOUT_1_45, 
+	VOUT_1_50 	
 };
 
 
@@ -87,11 +86,15 @@ enum PMIC_VOLTAGE {
 static const unsigned int frequency_match_1GHZ[][4] = {
 /* frequency, Mathced VDD ARM voltage , Matched VDD INT*/
 #if 1
-        {1300000, 1325, 1100, 0},
-        {1200000, 1325, 1100, 0},
-        {100000, 1225, 1100, 1},
-        {600000, 1125, 1100, 2},
-        {200000, 950, 1000, 4},
+        {1400000, 1300, 1100, 0},
+        {1360000, 1300, 1100, 0},
+        {1280000, 1300, 1100, 0},
+        {1200000, 1300, 1100, 0},
+        {1120000, 1300, 1100, 0},
+        {1000000, 1275, 1100, 0},
+        {800000, 1200, 1100, 1},
+        {400000, 1050, 1100, 2},
+        {200000, 950, 1100, 4},
         {100000, 950, 1000, 5},
 #else //just for dvs test
         {1000000, 1250, 1100, 0},
@@ -116,10 +119,10 @@ const unsigned int (*frequency_match[2])[4] = {
 
 #if 0
 /*  voltage table */
-static const unsigned int voltage_table[28] = {
-	750, 800, 850, 900, 925, 950, 975, 1000, 1025, 1050,
-	1075, 1100, 1125, 1150, 1175, 1200, 1225, 1250, 1275,
-	1300, 1325, 1350, 1375, 1400, 1425, 1450, 1475, 1500
+static const unsigned int voltage_table[16] = {
+	750, 800, 850, 900, 950, 1000, 1050,
+	1100, 1150, 1200, 1250, 1300, 1350,
+	1400, 1450, 1500
 };
 #endif
 
@@ -143,12 +146,13 @@ static const unsigned int dvs_volt_table_800MHZ[][3] = {
 };
 
 static const unsigned int dvs_volt_table_1GHZ[][3] = {
-        {L0, DVSARM1, DVSINT1}, // 1.3ghz
-        {L1, DVSARM1, DVSINT1}, // 1.2ghz
-        {L2, DVSARM2, DVSINT1}, // 1.0ghz
-        {L3, DVSARM3, DVSINT1}, // 600mhz
-        {L4, DVSARM4, DVSINT2}, // 200mhz
-        {L5, DVSARM4, DVSINT2}, // 100mhz
+        {L0, DVSARM1, DVSINT1},//DVSINT0
+        {L1, DVSARM1, DVSINT1},
+        {L2, DVSARM2, DVSINT1},
+ //266       {L3, DVSARM3, DVSINT1},
+        {L3, DVSARM3, DVSINT1},
+        {L4, DVSARM4, DVSINT1},
+        {L5, DVSARM4, DVSINT2},
 //        {L6, DVSARM4, DVSINT2},
 };
 
@@ -159,33 +163,37 @@ const unsigned int (*dvs_volt_table[2])[3] = {
 };
 
 static const unsigned int dvs_arm_voltage_set[][2] = {
-	{DVSARM1, 1325},
-	{DVSARM2, 1225},
-	{DVSARM3, 1125},
+	{DVSARM1, 1275},
+	{DVSARM2, 1200},
+	{DVSARM3, 1050},
 	{DVSARM4, 950},
 	{DVSINT1, 1100},
 	{DVSINT2, 1000},
 };
 #endif
 
+extern int exp_UV_mV[10];
+
 static int set_max8998(unsigned int pwr, enum perf_level p_lv)
 {
 	int voltage;
 	int pmic_val;
 	int ret = 0;
-	const unsigned int (*frequency_match_tab)[4] = frequency_match[S5PC11X_FREQ_TAB];
+	const unsigned int (*frequency_match_tab)[4] = frequency_match[S5PC11X_FREQ_TAB];	
 
-	DBG("%s : p_lv = %d : pwr = %d \n", __FUNCTION__, p_lv,pwr);
+//	DBG("%s : p_lv = %d : pwr = %d \n", __FUNCTION__, p_lv,pwr);
 
 	if(pwr == PMIC_ARM) {
-		voltage = frequency_match_tab[p_lv][pwr + 1];
+//		voltage = frequency_match_tab[p_lv][pwr + 1];
+		voltage = frequency_match_tab[p_lv][pwr + 1] - exp_UV_mV[p_lv];
 
 		if(voltage == s_arm_voltage)
 			return ret;
 
 		pmic_val = voltage * 1000;
-
-		DBG("regulator_set_voltage =%d\n",voltage);
+		
+//		DBG("regulator_set_voltage =%d\n",voltage);
+		DBG("regulator_set_voltage =%dmA @ %dMHz-%d UV=%d\n",voltage,frequency_match_tab[p_lv][pwr]/1000,p_lv,exp_UV_mV[p_lv]);
 		/*set Arm voltage*/
 		ret = regulator_set_voltage(Reg_Arm,pmic_val,pmic_val);
 	        if(ret != 0)
@@ -200,8 +208,8 @@ static int set_max8998(unsigned int pwr, enum perf_level p_lv)
 		else
 			udelay((s_arm_voltage - voltage)/RAMP_RATE);
 
-		s_arm_voltage = voltage;
-
+		s_arm_voltage = voltage;	
+		
 	} else if(pwr == PMIC_INT) {
 		voltage = frequency_match_tab[p_lv][pwr + 1];
 		if(voltage == s_int_voltage)
@@ -209,7 +217,7 @@ static int set_max8998(unsigned int pwr, enum perf_level p_lv)
 
 		pmic_val = voltage * 1000;
 
-		DBG("regulator_set_voltage = %d\n",voltage);
+		//DBG("regulator_set_voltage = %d\n",voltage);
 		/*set Arm voltage*/
 		ret = regulator_set_voltage(Reg_Int, pmic_val, pmic_val);
 	        if(ret != 0)
@@ -236,38 +244,29 @@ static int set_max8998(unsigned int pwr, enum perf_level p_lv)
 
 void set_pmic_gpio(void)
 {
-	printk(KERN_ERR "lnt %s, start\n",__FUNCTION__);
 	/*set set1, set2, set3 of max8998 driver as 0*/
 	/* set GPH0(3), GPH0(4) & GPH0(5) as low*/
 	s3c_gpio_cfgpin(GPIO_BUCK_1_EN_A, S3C_GPIO_OUTPUT);
 	s3c_gpio_setpin(GPIO_BUCK_1_EN_A, 0);
 	s3c_gpio_setpull(GPIO_BUCK_1_EN_A, S3C_GPIO_PULL_NONE);
 
-	s3c_gpio_cfgpin(GPIO_OJ_SPI_MOSI, S3C_GPIO_OUTPUT);
-	s3c_gpio_setpin(GPIO_OJ_SPI_MOSI, 0);
-	s3c_gpio_setpull(GPIO_OJ_SPI_MOSI, S3C_GPIO_PULL_NONE);
-if(system_rev >= 0x08){
-	s3c_gpio_cfgpin(GPIO_ATSC_SPI_MOSI, S3C_GPIO_OUTPUT);
-	s3c_gpio_setpin(GPIO_ATSC_SPI_MOSI, 0);
-	s3c_gpio_setpull(GPIO_ATSC_SPI_MOSI, S3C_GPIO_PULL_NONE);
-}
-else
-{
-    s3c_gpio_cfgpin(GPIO_BUCK_2_EN, S3C_GPIO_OUTPUT);
+	s3c_gpio_cfgpin(GPIO_BUCK_1_EN_B, S3C_GPIO_OUTPUT);
+	s3c_gpio_setpin(GPIO_BUCK_1_EN_B, 0);
+	s3c_gpio_setpull(GPIO_BUCK_1_EN_B, S3C_GPIO_PULL_NONE);
+
+	s3c_gpio_cfgpin(GPIO_BUCK_2_EN, S3C_GPIO_OUTPUT);
 	s3c_gpio_setpin(GPIO_BUCK_2_EN, 0);
 	s3c_gpio_setpull(GPIO_BUCK_2_EN, S3C_GPIO_PULL_NONE);
-}
 
 	s3c_gpio_setpull(GPIO_AP_PS_HOLD, S3C_GPIO_PULL_NONE);
-	printk(KERN_ERR "lnt %s, end\n",__FUNCTION__);
 }
 EXPORT_SYMBOL_GPL(set_pmic_gpio);
 
 
 int set_voltage(enum perf_level p_lv)
 {
-	DBG("%s : p_lv = %d\n", __FUNCTION__, p_lv);
-	if(step_curr != p_lv)
+	//DBG("%s : p_lv = %d\n", __FUNCTION__, p_lv);
+	if(step_curr != p_lv) 
 	{
 		/*Commenting gpio initialisation*/
 		//set_pmic_gpio();
@@ -278,7 +277,6 @@ int set_voltage(enum perf_level p_lv)
 	}
 	return 0;
 }
-
 EXPORT_SYMBOL(set_voltage);
 
 #ifdef DECREASE_DVFS_DELAY
@@ -287,53 +285,19 @@ int set_gpio_dvs(enum perf_level p_lv)
 	switch(p_lv)
     {
         case L0:
-            //writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK)                                                ), S5PV210_GPH0DAT);
-            //BUCK_1_EN_A disabled
-            gpio_set_value(S5PV210_GPB(6),0);
-            // BUCK_1_EN_B disabled
-            gpio_set_value(S5PV210_GPB(3),0);
-            //BUCK_2_EN disabled
-            gpio_set_value(S5PV210_GPB(7),0);
-            
+            writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK)                                                ), S5PV210_GPH0DAT);
             break;
         case L1:
-           // writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK) | PMIC_SET1_BIT                                ), S5PV210_GPH0DAT);
-            //BUCK_1_EN_A enabled
-            gpio_set_value(S5PV210_GPB(6),1);
-            // BUCK_1_EN_B disabled
-            gpio_set_value(S5PV210_GPB(3),0);
-            //BUCK_2_EN disabled
-            gpio_set_value(S5PV210_GPB(7),0);
-           
+            writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK) | PMIC_SET1_BIT                                ), S5PV210_GPH0DAT);
             break;
         case L2:
-            //writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK)                 | PMIC_SET2_BIT                ), S5PV210_GPH0DAT);
-             //BUCK_1_EN_A disabled
-            gpio_set_value(S5PV210_GPB(6),0);
-            // BUCK_1_EN_B enabled
-            gpio_set_value(S5PV210_GPB(3),1);
-            //BUCK_2_EN disabled
-            gpio_set_value(S5PV210_GPB(7),0);
+            writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK)                 | PMIC_SET2_BIT                ), S5PV210_GPH0DAT);
             break;
         case L3:
-           // writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK) | PMIC_SET1_BIT | PMIC_SET2_BIT                ), S5PV210_GPH0DAT);
-             //BUCK_1_EN_A enabled
-            gpio_set_value(S5PV210_GPB(6),1);
-            // BUCK_1_EN_B enabled
-            gpio_set_value(S5PV210_GPB(3),1);
-            //BUCK_2_EN disabled
-            gpio_set_value(S5PV210_GPB(7),0);
+            writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK) | PMIC_SET1_BIT | PMIC_SET2_BIT                ), S5PV210_GPH0DAT);
             break;
         case L4:
-        case L5:
-        case L6:
-            //writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK) | PMIC_SET1_BIT | PMIC_SET2_BIT | PMIC_SET3_BIT), S5PV210_GPH0DAT);
-             //BUCK_1_EN_A enabled
-            gpio_set_value(S5PV210_GPB(6),1);
-            // BUCK_1_EN_B enabled
-            gpio_set_value(S5PV210_GPB(3),1);
-            //BUCK_2_EN enabled
-            gpio_set_value(S5PV210_GPB(7),1);
+            writel(((readl(S5PV210_GPH0DAT) & ~PMIC_SET_MASK) | PMIC_SET1_BIT | PMIC_SET2_BIT | PMIC_SET3_BIT), S5PV210_GPH0DAT);
             break;
         default:
             pr_err("[PWR] %s : Invalid parameters (%d)\n", __func__, p_lv);
@@ -341,40 +305,51 @@ int set_gpio_dvs(enum perf_level p_lv)
 	}
 
 	DBG("[PWR] %s : GPH0DAT=%x, GPH0CON=%x, GPH0PUD=%x\n",__func__, readl(S5PV210_GPH0DAT), readl(S5PV210_GPH0CON), readl(S5PV210_GPH0PUD));
-
+	
 	return 0;
 }
 #else
 int set_gpio_dvs(int armSet)
 {
+	unsigned int curPmicArm = readl(S5PV210_GPH0DAT);
 	DBG("set dvs with %d\n", armSet);
-		switch(armSet) {
-		case DVSARM1:
-			gpio_set_value(set1_gpio, 0);
-			gpio_set_value(set2_gpio, 0);
-			break;
-		case DVSARM2:
-			gpio_set_value(set2_gpio, 0);
-			gpio_set_value(set1_gpio, 1);
-			break;
-		case DVSARM3:
-			gpio_set_value(set1_gpio, 0);
-			gpio_set_value(set2_gpio, 1);
-			break;
-		case DVSARM4:
-			gpio_set_value(set1_gpio, 1);
-			gpio_set_value(set2_gpio, 1);
-			break;
-		case DVSINT1:
-			gpio_set_value(set3_gpio, 0);
-			break;
-		case DVSINT2:
-			gpio_set_value(set3_gpio, 1);
-			break;
-		default:
-			printk("Invalid parameters to %s\n",__FUNCTION__);
+	switch(armSet) {
+	case DVSARM1:
+		curPmicArm = curPmicArm & ~(PMIC_ARM_MASK); //set GPH0[3],GPH0[4] low
+		writel(curPmicArm,S5PV210_GPH0DAT);
+		//gpio_set_value(GPIO_BUCK_1_EN_A, 0);
+		//gpio_set_value(GPIO_BUCK_1_EN_B, 0);
+		break;
+	case DVSARM2:
+		curPmicArm = (curPmicArm & ~(PMIC_ARM_MASK)) | PMIC_SET1_HIGH; //set GPH0[3] high, GPH0[4] low
+		writel(curPmicArm,S5PV210_GPH0DAT);
+		//gpio_set_value(GPIO_BUCK_1_EN_B, 0);
+		//gpio_set_value(GPIO_BUCK_1_EN_A, 1);
+		break;
+	case DVSARM3:
+		curPmicArm = (curPmicArm & ~(PMIC_ARM_MASK)) | PMIC_SET2_HIGH; //set GPH0[3] low, GPH0[4] high
+		writel(curPmicArm,S5PV210_GPH0DAT);		
+		//gpio_set_value(GPIO_BUCK_1_EN_A, 0);
+		//gpio_set_value(GPIO_BUCK_1_EN_B, 1);
+		break;
+	case DVSARM4:
+		curPmicArm = (curPmicArm & ~(PMIC_ARM_MASK)) | PMIC_SET1_HIGH | PMIC_SET2_HIGH; //set GPH0[3],GPH0[4] high
+		writel(curPmicArm,S5PV210_GPH0DAT);	
+		//gpio_set_value(GPIO_BUCK_1_EN_A, 1);
+		//gpio_set_value(GPIO_BUCK_1_EN_B, 1);
+		break;
+	case DVSINT1:
+		gpio_set_value(GPIO_BUCK_2_EN, 0);
+		break;
+	case DVSINT2:
+		gpio_set_value(GPIO_BUCK_2_EN, 1);
+		break;
+	default:
+		printk("Invalid parameters to %s\n",__FUNCTION__);
 		return -EINVAL;
-		}
+	}
+
+	DBG("S5PV210_GPH0CON=%x,S5PV210_GPH0DAT=%x,S5PV210_GPH0PUD=%x\n",readl(S5PV210_GPH0CON),readl(S5PV210_GPH0DAT),readl(S5PV210_GPH0PUD));
 
 	return 0;
 }
@@ -405,13 +380,14 @@ int set_voltage_dvs(enum perf_level p_lv)
 	set_gpio_dvs(p_lv);
 	udelay(delay);
 
-	DBG("[PWR] %s : level (%d -> %d), delay (%u)\n", __func__, step_curr, p_lv, delay);
+	DBG("[PWR] %s : level (%d -> %d), delay (%u)\n", __func__, frequency_match_tab[step_curr][0], frequency_match_tab[p_lv][0], delay); //jj
+//	DBG("[PWR] %s : level (%d -> %d), delay (%u)\n", __func__, step_curr, p_lv, delay);
 
 	step_curr = p_lv;
 
 	return 0;
 #else
-	unsigned int new_voltage, old_voltage;
+	unsigned int new_voltage, old_voltage; 
 	const unsigned int (*dvs_volt_table_ptr)[3] = dvs_volt_table[S5PC11X_FREQ_TAB];
 
 	DBG("%s : p_lv = %d\n", __FUNCTION__, p_lv);
@@ -459,7 +435,9 @@ void max8998_init(void)
 	}
 	else // for 1GHZ table
 	{
-		step_curr = L0;
+		//step_curr = L0;
+		step_curr = L2;
+		//set_voltage_dvs(L1); //switch to 800MHZ
 		set_voltage_dvs(L1); //switch to 800MHZ
 	}
 	if (!dvs_initilized) dvs_initilized=1;
@@ -504,11 +482,11 @@ static int max8998_consumer_probe(struct platform_device *pdev)
 	max8998_set_dvsint_direct(DVSINT1, dvs_arm_voltage_set[4][1]);
 	max8998_set_dvsint_direct(DVSINT2, dvs_arm_voltage_set[5][1]);
 #endif
-
+	
 	/*Initialize the pmic voltage*/
 	max8998_init();
-
-	return ret;
+	
+	return ret;	
 }
 
 static int max8998_consumer_remove(struct platform_device *pdev)
@@ -520,7 +498,7 @@ static int max8998_consumer_remove(struct platform_device *pdev)
 
 	if(Reg_Int)
 		regulator_put(Reg_Int);
-
+	
 	Reg_Arm = NULL;
 	Reg_Int = NULL;
 	return ret;
@@ -534,14 +512,14 @@ extern short int get_headset_status(void);
 enum
 {
 	SEC_JACK_NO_DEVICE					= 0x0,
-	SEC_HEADSET_4_POLE_DEVICE			= 0x01 << 0,
+	SEC_HEADSET_4_POLE_DEVICE			= 0x01 << 0,	
 	SEC_HEADSET_3_POLE_DEVICE			= 0x01 << 1,
-//doesn't use below 3 dev.
+//doesn't use below 3 dev.	
 	SEC_TTY_DEVICE						= 0x01 << 2,
 	SEC_FM_HEADSET						= 0x01 << 3,
-	SEC_FM_SPEAKER						= 0x01 << 4,
+	SEC_FM_SPEAKER						= 0x01 << 4,	
 	SEC_TVOUT_DEVICE					= 0x01 << 5,
-	SEC_UNKNOWN_DEVICE				= 0x01 << 6,
+	SEC_UNKNOWN_DEVICE				= 0x01 << 6,	
 };
 //static int ldo_disable_check(int ldo)
 //return true: disable
@@ -563,22 +541,11 @@ static int ldo_disable_check(int ldo)
 				return 1;
 			break;
 #endif
-#if 0
 		case MAX8998_LDO4:
 			if(get_headset_status()==SEC_HEADSET_4_POLE_DEVICE) //fix sendend is low in sleep
 				return 0;
 			else
 				return 1;
-				break;
-#endif
-   case MAX8998_LDO6: //20100518_inchul.. BT_WL_2.6V(LDO6): alive power in sleep mode(for victory)
-			return 0;
-			break;
-
-   case MAX8998_LDO16: //20100518_inchul.. MIPI_1.8V_C110(LDO16): alive power in sleep mode(for victory)
-			return 0;
-			break;
-
 		default:
 			return 1;
 	}
@@ -588,9 +555,9 @@ static int pmic_controling_list;// a global variable to store ldo's status
 static int s3c_consumer_suspend(struct platform_device *dev, pm_message_t state)
 {
 	int i ;
-
+	
 	pmic_controling_list = 0;
-
+	
 	for (i=MAX8998_LDO3; i<=MAX8998_LDO17;i++) {
 			if (ldo_disable_check(i)) {
 				if (max8998_ldo_is_enabled_direct(i)) {
@@ -605,43 +572,21 @@ static int s3c_consumer_suspend(struct platform_device *dev, pm_message_t state)
 	//max8998_ldo_disable_direct(MAX8998_DCDC3);
 	max8998_ldo_disable_direct(MAX8998_DCDC2);
 	max8998_ldo_disable_direct(MAX8998_DCDC1);
-
-	  if(universal_sdhci2_detect_ext_cd()) //card not present
-	       {
-	            s3c_gpio_slp_cfgpin(S5PV210_GPG2(2),S3C_GPIO_SLP_OUT0);
-	       }
-	       else
-	       {
-	            unsigned int gpio;
-
-	            s3c_gpio_slp_cfgpin(S5PV210_GPG2(2),S3C_GPIO_SLP_OUT1 ); //tflash_enable
-
-	            s3c_gpio_slp_cfgpin(S5PV210_GPG2(0),S3C_GPIO_SFN(2) ); //tflash_clk
-	            s3c_gpio_slp_setpull_updown(S5PV210_GPG2(0), S3C_GPIO_PULL_UP);
-	            for (gpio = S5PV210_GPG2(1); gpio < S5PV210_GPG2(7); gpio++)
-	            {
-	                  if (gpio != S5PV210_GPG2(2))
-	                  {
-	        		    s3c_gpio_slp_cfgpin(gpio, S3C_GPIO_SFN(2));
-	        		    s3c_gpio_slp_setpull_updown(gpio, S3C_GPIO_PULL_NONE);
-	                 }
-		    }
-       }
 	return 0;
 }
 
 static int s3c_consumer_resume(struct platform_device *dev)
 {
 	int i, saved_control;
-
+	
 	max8998_ldo_enable_direct(MAX8998_DCDC1);
 	max8998_ldo_enable_direct(MAX8998_DCDC2);
 	//max8998_ldo_enable_direct(MAX8998_DCDC3);
 	//max8998_ldo_enable_direct(MAX8998_DCDC4);
-
+	
 	// done in BL code.
 	saved_control = pmic_controling_list;
-
+	
 	for (i=MAX8998_LDO3;i<=MAX8998_LDO17;i++) {
 		if ((saved_control  >> i) & 0x1) max8998_ldo_enable_direct(i);
 	}
@@ -656,7 +601,7 @@ static struct platform_driver max8998_consumer_driver = {
 		   },
 	.probe = max8998_consumer_probe,
 	.remove = max8998_consumer_remove,
-        .suspend = s3c_consumer_suspend,
+        .suspend = s3c_consumer_suspend, 
         .resume = s3c_consumer_resume,
 
 };
